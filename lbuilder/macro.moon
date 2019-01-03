@@ -57,9 +57,17 @@ shape_Macro = ts.shape
 get_least_length = sign "table, table -> number"
 get_least_length (a, b) -> if #a > #b then #a else #b
 
---> ## exclude_string
---> This PCRE prefix matches whatever comes after it if it's outside a string
-exclude_string = [[\\["'](*SKIP)(?!)|["'](?:\\["']|[^"'])*["'](*SKIP)(?!)|]]
+--> ## exclude_prefix
+--> This PCRE prefix matches whatever comes after it if it's outside a string or in a comment.
+exclude_prefix   = [[\\["'](*SKIP)(?!)]]
+exclude_prefix ..= [[|["'](?:\\["']]
+exclude_prefix ..= [[|[^"'])*["'](*SKIP)(?!)]]
+exclude_prefix ..= [[|\-\-.*\n(*SKIP)(?!)]]
+exclude_prefix ..= "|"
+
+--> ## exclude_suffix
+--> Prevents including comments in the match
+exclude_suffix   = "( *--.*)"
 
 --> ## expand
 --> Expands a macro in the input.
@@ -80,7 +88,7 @@ expand (macro) -> (stack) -> (input) ->
         local regex
         if macro.condition\match "^!"
           macro.condition = macro.condition\sub 2
-          regex = pcre.new exclude_string .. macro.condition
+          regex = pcre.new exclude_prefix .. macro.condition .. exclude_suffix
         else
           regex = pcre.new macro.condition
         unless (regex\match input) then MacroError "pcre condition not matched"
@@ -96,7 +104,7 @@ expand (macro) -> (stack) -> (input) ->
           unless pcre then MacroError "lrexlib-pcre not found"
           local regex
           if cond[3]
-            regex = pcre.new exclude_string .. cond[2]
+            regex = pcre.new exclude_prefix .. cond[2] .. exclude_suffix
           else
             regex = pcre.new cond[2]
           unless (regex\match input) then MacroError "pcre condition not matched"
@@ -121,7 +129,7 @@ expand (macro) -> (stack) -> (input) ->
       local regex_capture
       if macro.capture[i]\match "^!"
         macro.capture[i] = macro.capture[i]\sub 2
-        regex_capture    = pcre.new exclude_string .. macro.capture[i]
+        regex_capture    = pcre.new exclude_prefix .. macro.capture[i] .. exclude_suffix
       else
         regex_capture = pcre.new macro.capture[i]
       input = pcre.gsub input, regex_capture, macro.replace[i]

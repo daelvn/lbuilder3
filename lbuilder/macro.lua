@@ -54,7 +54,12 @@ get_least_length(function(a, b)
     return #b
   end
 end)
-local exclude_string = [[\\["'](*SKIP)(?!)|["'](?:\\["']|[^"'])*["'](*SKIP)(?!)|]]
+local exclude_prefix = [[\\["'](*SKIP)(?!)]]
+exclude_prefix = exclude_prefix .. [[|["'](?:\\["']]
+exclude_prefix = exclude_prefix .. [[|[^"'])*["'](*SKIP)(?!)]]
+exclude_prefix = exclude_prefix .. [[|\-\-.*\n(*SKIP)(?!)]]
+exclude_prefix = exclude_prefix .. "|"
+local exclude_suffix = "( *--.*)"
 local expand = sign("Macro -> table -> string -> [MacroError|string]")
 expand(function(macro)
   return function(stack)
@@ -81,7 +86,7 @@ expand(function(macro)
           local regex
           if macro.condition:match("^!") then
             macro.condition = macro.condition:sub(2)
-            regex = pcre.new(exclude_string .. macro.condition)
+            regex = pcre.new(exclude_prefix .. macro.condition .. exclude_suffix)
           else
             regex = pcre.new(macro.condition)
           end
@@ -111,7 +116,7 @@ expand(function(macro)
             end
             local regex
             if cond[3] then
-              regex = pcre.new(exclude_string .. cond[2])
+              regex = pcre.new(exclude_prefix .. cond[2] .. exclude_suffix)
             else
               regex = pcre.new(cond[2])
             end
@@ -145,7 +150,7 @@ expand(function(macro)
           local regex_capture
           if macro.capture[i]:match("^!") then
             macro.capture[i] = macro.capture[i]:sub(2)
-            regex_capture = pcre.new(exclude_string .. macro.capture[i])
+            regex_capture = pcre.new(exclude_prefix .. macro.capture[i] .. exclude_suffix)
           else
             regex_capture = pcre.new(macro.capture[i])
           end
@@ -171,28 +176,8 @@ expand(function(macro)
     end
   end
 end)
-local expand_many = sign("table -> table -> string -> [MacroError|string]")
-expand_many(function(macrol)
-  do
-    local type = typeforall(macrol)
-    if type then
-      dieif(SIG, (type ~= "Macro"), "Unexpected type at 'expand_many'. Expected Macro, got " .. tostring(type))
-    else
-      MacroError("unexpected type in 'expand_many'")
-    end
-  end
-  return function(stack)
-    return function(input)
-      for name, macro in pairs(macrol) do
-        input, stack = expand(macro, stack, input)
-      end
-      return input, stack
-    end
-  end
-end)
 return {
   Macro = Macro,
   MacroError = MacroError,
-  expand = expand,
-  expand_many = expand_many
+  expand = expand
 }

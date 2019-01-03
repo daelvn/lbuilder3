@@ -19,6 +19,7 @@ satisfy (f) -> Parser f, (cond, input) ->
   if read = input\read!
     if cond read
       input\consume!
+      input\rest!
     else ParseError "unexpected #{read}"
   else ParseError "could not read input"
 
@@ -47,32 +48,32 @@ octDigit -> satisfy isOctDigit
 --> ## hexDigit
 --> Matches a digit from 0 to 8 and letters a-f and A-F
 hexDigit = sign "Parser"
-hexDigit -> satisfy (c) -> isHexDigit c
+hexDigit -> satisfy isHexDigit
 
 --> ## digit
 --> Parses a digit from 0 to 9
 digit = sign "Parser"
-digit -> satisfy (c) -> isDigit c
+digit -> satisfy isDigit
 
 --> ## letter
 --> Parses alphabetic characters (lower-case, upper-case and title-case letters, plus letters of caseless scripts and modifiers letters).
 letter = sign "Parser"
-letter -> satisfy (c) -> isAlpha c
+letter -> satisfy isAlpha
 
 --> ## alphaNum
 --> Parses alphabetic or numeric characters.
 alphaNum = sign "Parser"
-alphaNum -> satisfy (c) -> isAlphaNum c
+alphaNum -> satisfy isAlphaNum
 
 --> ## lower
 --> Parses lower-case alphabetic characters (letters).
 lower = sign "Parser"
-lower -> satisfy (c) -> isLower c
+lower -> satisfy isLower
 
 --> ## upper
 --> Parses uppercase-case alphabetic characters (letters).
 upper = sign "Parser"
-upper -> satisfy (c) -> isUpper c
+upper -> satisfy isUpper
 
 --> ## tab
 --> Parses specifically \t.
@@ -98,13 +99,13 @@ newline -> satisfy (c) -> c\match "\n"
 --> ## space
 --> Parses any space character, and the control characters \t, \n, \r, \f, \v.
 space = sign "Parser"
-space -> satisfy (c) -> isSpace c
+space -> satisfy isSpace
 
 --> ## string
 --> Parses several characters
 --> TODO does require some engineering, and skipMany probably
 lower = sign "Parser"
-lower -> satisfy (c) -> isLower c
+lower -> satisfy isLower
 
 --> ## oneOf
 --> Advances on any of the characters in the set.

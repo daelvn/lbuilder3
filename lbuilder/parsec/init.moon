@@ -14,12 +14,11 @@ iostring = sign "string -> IOString"
 iostring (s) -> setmetatable {
   value: s
   pointer: 1
-  
+  rest:            =>
+    @value\sub @pointer
   read:            =>
-    print "iostring $ read #{@value\sub @pointer, @pointer}"
     @value\sub @pointer, @pointer
   consume: (ptr=1) =>
-    print "iostring $ consume #{ptr}"
     @pointer += ptr
     @value\sub @pointer, @pointer
 }, { __type: "IOString" }
