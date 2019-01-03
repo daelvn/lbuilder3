@@ -137,18 +137,5 @@ expand (macro) -> (stack) -> (input) ->
   --> Return the string and the final stack
   return input, stack
 
---> ## expand_many
---> Expands a list of Macros
-expand_many = sign "table -> table -> string -> [MacroError|string]"
-expand_many (macrol) ->
-  if type = typeforall macrol
-    dieif SIG, (type != "Macro"), "Unexpected type at 'expand_many'. Expected Macro, got #{type}"
-  else
-    MacroError "unexpected type in 'expand_many'"
-  (stack) -> (input) ->
-    for name, macro in pairs macrol
-      input, stack = expand macro, stack, input
-    return input, stack
-
 --> Export
-{ :Macro, :MacroError, :expand, :expand_many }
+{ :Macro, :MacroError, :expand }
