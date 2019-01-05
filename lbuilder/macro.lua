@@ -142,8 +142,6 @@ expand(function(macro)
         }
       end
       for i = 1, ll do
-        print(macro.capture[i], macro.replace[i])
-        print(ll)
         if macro.capture[i]:match("^@") then
           if not (pcre) then
             MacroError("lrexlib-pcre not found")

@@ -120,8 +120,6 @@ expand (macro) -> (stack) -> (input) ->
     macro.replace = {macro.replace}
   --> Iterate from 1 to `ll` so that we can go over the captures and replaces in order.
   for i=1,ll
-    print macro.capture[i], macro.replace[i]
-    print ll
     if macro.capture[i]\match "^@"
       unless pcre then MacroError "lrexlib-pcre not found"
       macro.capture[i] = macro.capture[i]\sub 2
