@@ -44,7 +44,8 @@ local shape_Macro = ts.shape({
   stack = (ts.array_of(ts.shape({
     ts.string,
     ts.string
-  }))):is_optional()
+  }))):is_optional(),
+  pass = ts.integer:is_optional()
 })
 local get_least_length = sign("table, table -> number")
 get_least_length(function(a, b)
@@ -59,7 +60,6 @@ exclude_prefix = exclude_prefix .. [[|["'](?:\\["']]
 exclude_prefix = exclude_prefix .. [[|[^"'])*["'](*SKIP)(?!)]]
 exclude_prefix = exclude_prefix .. [[|\-\-.*\n(*SKIP)(?!)]]
 exclude_prefix = exclude_prefix .. "|"
-local exclude_suffix = "( *--.*)"
 local expand = sign("Macro -> table -> string -> [MacroError|string]")
 expand(function(macro)
   return function(stack)
@@ -86,9 +86,9 @@ expand(function(macro)
           local regex
           if macro.condition:match("^!") then
             macro.condition = macro.condition:sub(2)
-            regex = pcre.new(exclude_prefix .. macro.condition .. exclude_suffix)
+            regex = pcre.new((exclude_prefix .. macro.condition), "m")
           else
-            regex = pcre.new(macro.condition)
+            regex = pcre.new(macro.condition, "m")
           end
           if not ((regex:match(input))) then
             MacroError("pcre condition not matched")
@@ -116,9 +116,9 @@ expand(function(macro)
             end
             local regex
             if cond[3] then
-              regex = pcre.new(exclude_prefix .. cond[2] .. exclude_suffix)
+              regex = pcre.new((exclude_prefix .. cond[2]), "m")
             else
-              regex = pcre.new(cond[2])
+              regex = pcre.new(cond[2], "m")
             end
             if not ((regex:match(input))) then
               MacroError("pcre condition not matched")
@@ -142,6 +142,8 @@ expand(function(macro)
         }
       end
       for i = 1, ll do
+        print(macro.capture[i], macro.replace[i])
+        print(ll)
         if macro.capture[i]:match("^@") then
           if not (pcre) then
             MacroError("lrexlib-pcre not found")
@@ -150,13 +152,37 @@ expand(function(macro)
           local regex_capture
           if macro.capture[i]:match("^!") then
             macro.capture[i] = macro.capture[i]:sub(2)
-            regex_capture = pcre.new(exclude_prefix .. macro.capture[i] .. exclude_suffix)
+            regex_capture = pcre.new((exclude_prefix .. macro.capture[i]), "m")
           else
-            regex_capture = pcre.new(macro.capture[i])
+            regex_capture = pcre.new(macro.capture[i], "m")
           end
-          input = pcre.gsub(input, regex_capture, macro.replace[i])
+          macro.pass = macro.pass or 1
+          if macro.pass == -1 then
+            local count
+            input, count = pcre.gsub(input, regex_capture, macro.replace[i])
+            while count > 0 do
+              input, count = pcre.gsub(input, regex_capture, macro.replace[i])
+            end
+          else
+            for j = 1, macro.pass do
+              local count
+              input, count = pcre.gsub(input, regex_capture, macro.replace[i])
+            end
+          end
         else
-          input = input:gsub(macro.capture[i], macro.replace[i])
+          macro.pass = macro.pass or 1
+          if macro.pass == -1 then
+            local count
+            input, count = input:gsub(macro.capture[i], macro.replace[i])
+            while count > 0 do
+              input, count = input:gsub(macro.capture[i], macro.replace[i])
+            end
+          else
+            for j = 1, macro.pass do
+              local count
+              input, count = input:gsub(macro.capture[i], macro.replace[i])
+            end
+          end
         end
       end
       if macro.stack then

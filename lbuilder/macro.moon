@@ -51,6 +51,7 @@ shape_Macro = ts.shape
   capture: ts.string + ts.array_of ts.string
   replace: ts.string + ts.array_of ts.string
   stack:   (ts.array_of ts.shape { ts.string, ts.string })\is_optional!
+  pass:    ts.integer\is_optional!
       
 --> ## get_least_length
 --> Compares two tables and returns the length of the least long.
@@ -64,10 +65,6 @@ exclude_prefix ..= [[|["'](?:\\["']]
 exclude_prefix ..= [[|[^"'])*["'](*SKIP)(?!)]]
 exclude_prefix ..= [[|\-\-.*\n(*SKIP)(?!)]]
 exclude_prefix ..= "|"
-
---> ## exclude_suffix
---> Prevents including comments in the match
-exclude_suffix   = "( *--.*)"
 
 --> ## expand
 --> Expands a macro in the input.
@@ -88,9 +85,9 @@ expand (macro) -> (stack) -> (input) ->
         local regex
         if macro.condition\match "^!"
           macro.condition = macro.condition\sub 2
-          regex = pcre.new exclude_prefix .. macro.condition .. exclude_suffix
+          regex = pcre.new (exclude_prefix .. macro.condition), "m"
         else
-          regex = pcre.new macro.condition
+          regex = pcre.new macro.condition, "m"
         unless (regex\match input) then MacroError "pcre condition not matched"
       else
         unless (input\match macro.condition) then MacroError "condition not matched"
@@ -104,9 +101,9 @@ expand (macro) -> (stack) -> (input) ->
           unless pcre then MacroError "lrexlib-pcre not found"
           local regex
           if cond[3]
-            regex = pcre.new exclude_prefix .. cond[2] .. exclude_suffix
+            regex = pcre.new (exclude_prefix .. cond[2]), "m"
           else
-            regex = pcre.new cond[2]
+            regex = pcre.new cond[2], "m"
           unless (regex\match input) then MacroError "pcre condition not matched"
         else
           MacroError "unknown condition type"
@@ -123,18 +120,35 @@ expand (macro) -> (stack) -> (input) ->
     macro.replace = {macro.replace}
   --> Iterate from 1 to `ll` so that we can go over the captures and replaces in order.
   for i=1,ll
+    print macro.capture[i], macro.replace[i]
+    print ll
     if macro.capture[i]\match "^@"
       unless pcre then MacroError "lrexlib-pcre not found"
       macro.capture[i] = macro.capture[i]\sub 2
       local regex_capture
       if macro.capture[i]\match "^!"
         macro.capture[i] = macro.capture[i]\sub 2
-        regex_capture    = pcre.new exclude_prefix .. macro.capture[i] .. exclude_suffix
+        regex_capture    = pcre.new (exclude_prefix .. macro.capture[i]), "m"
       else
-        regex_capture = pcre.new macro.capture[i]
-      input = pcre.gsub input, regex_capture, macro.replace[i]
+        regex_capture = pcre.new macro.capture[i], "m"
+      macro.pass or= 1
+      if macro.pass == -1
+        input, count = pcre.gsub input, regex_capture, macro.replace[i]
+        while count > 0
+          input, count = pcre.gsub input, regex_capture, macro.replace[i]
+      else
+        for j=1,macro.pass
+          input, count = pcre.gsub input, regex_capture, macro.replace[i]
     else
-      input = input\gsub macro.capture[i], macro.replace[i]
+      macro.pass or=1
+      if macro.pass == -1
+        input, count = input\gsub macro.capture[i], macro.replace[i]
+        while count > 0
+          input, count = input\gsub macro.capture[i], macro.replace[i]
+      else
+        for j=1,macro.pass
+          input, count = input\gsub macro.capture[i], macro.replace[i]
+
   --> Perform the appropriate stack operations
   if macro.stack
     for oper in *macro.stack
